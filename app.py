@@ -29,7 +29,7 @@ def get_user(id, db: Session = Depends(get_db)):
 
 
 @app.get("/post/{id}", response_model=PostGet)
-def get_user(id, db: Session = Depends(get_db)):
+def get_post(id, db: Session = Depends(get_db)):
     result = db.query(Post).filter(Post.id == id).one_or_none()
     if result:
         return result
@@ -63,14 +63,19 @@ def get_feed_post(id, limit: int = 10, db: Session = Depends(get_db)):
     return result
 
 
-@app.get("/post/recommendations/{limit}", response_model=List[PostGet])
-def get_recommendations(id: int, limit: int = 10, db: Session = Depends(get_db)):
+@app.get("/post/recommendations/", response_model=List[PostGet])
+def get_recommendations(limit: int = 10, db: Session = Depends(get_db)):
     result = (
-        db.query(Post)
+        db.query(Post.id, Post.text, Post.topic, func.count('*'))
+        .select_from(Feed)
+        .join(Post)
+        .where(Feed.action == 'like')
+        .group_by(Post.id)
+        .order_by(func.count('*').desc())
         .limit(limit)
-        .order_by(Post.id.desc())
         .all()
     )
     logger.info(result)
     return result
+
 
